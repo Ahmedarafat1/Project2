@@ -10,11 +10,11 @@ Resources:
   LBSecurityGrp: 
     Type: AWS::EC2::SecurityGroup
     Properties: 
-        GroupDescription: allow http
-        VpcId:
+      GroupDescription: allow http
+      VpcId:
         Fn::ImportValue:
           !Sub "${EnvironmentName}-VPCID"
-        SecurityGroupIngress:
+      SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
@@ -23,7 +23,7 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0  
-        SecurityGroupEgress:
+      SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
@@ -35,11 +35,11 @@ Resources:
   WebSecurityGrp: 
     Type: AWS::EC2::SecurityGroup
     Properties: 
-        GroupDescription: allow http
-        VpcId:
+      GroupDescription: allow http
+      VpcId:
         Fn::ImportValue:
           !Sub "${EnvironmentName}-VPCID"
-        SecurityGroupIngress:
+      SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 8080
           ToPort: 8080
@@ -48,7 +48,7 @@ Resources:
           FromPort: 22
           ToPort: 22
           CidrIp: 0.0.0.0/0
-        SecurityGroupEgress:
+      SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 0
           ToPort: 65535
@@ -83,45 +83,45 @@ Resources:
       VPCZoneIdentifier: 
       - Fn::ImportValue:
           !Sub "${EnvironmentName}-PRIV-NETS"      
-    LaunchConfigurationName: 
-      Ref: WebAppLaunchConfig
-    MinSize: "3"
-    MaxSize: "5"
-    TargetGroupARNs:
-    - Ref: WebAppTargetGroup    
+      LaunchConfigurationName: 
+        Ref: WebAppLaunchConfig
+      MinSize: "3"
+      MaxSize: "5"
+      TargetGroupARNs:
+        - Ref: WebAppTargetGroup    
     
   WebAppLB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Subnets:
-      - Fn::ImportValue: !Sub "${EnvironmentName}-PUB1-SN"
-      - Fn::ImportValue: !Sub "${EnvironmentName}-PUB2-SN"
+        - Fn::ImportValue: !Sub "${EnvironmentName}-PUB1-SN"
+        - Fn::ImportValue: !Sub "${EnvironmentName}-PUB2-SN"
       SecurityGroups:
-      - Ref: LBSecurityGrp
+        - Ref: LBSecurityGrp
       
   Listener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
-     DefaultActions:
-       - Type: "forward"
-         TargetGroupARNs:
-           !Ref: WebAppTargetGroup
-     LoadBalancerArn:
-       !Ref: WebAppLB
-     Port: 80
-     Protocol: "HTTP"
+      DefaultActions:
+        - Type: "forward"
+          TargetGroupARNs:
+            Ref: WebAppTargetGroup
+      LoadBalancerArn:
+        Ref: WebAppLB
+      Port: 80
+      Protocol: "HTTP"
    
   ALBListenerRule:
-     Type: AWS::ElasticLoadBalancingV2::ListenerRule
-     Properties: 
-       Actions:
-       - Type: forward
-         TargetGroupARNs: !Ref 'WebAppTargetGroup'
-       Conditions:
-       - Field: path-pattern
-         Values: [/]
-       ListenerArn: !Ref 'Listener'
-       Priority: 1
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties: 
+      Actions:
+        - Type: forward
+          TargetGroupARNs: !Ref 'WebAppTargetGroup'
+      Conditions:
+        - Field: path-pattern
+      Values: [/]
+      ListenerArn: !Ref 'Listener'
+      Priority: 1
        
   WebAppTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -136,4 +136,4 @@ Resources:
       UnhealthyThresholdCount: 5
       VpcId: 
         Fn::ImportValue:
-          Fn::Sub: "${EnvironmentName}-VPCID"    
+          Fn::Sub: "${EnvironmentName}-VPCID" 
