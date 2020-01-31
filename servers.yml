@@ -32,6 +32,7 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0  
+  
   WebSecurityGrp: 
     Type: AWS::EC2::SecurityGroup
     Properties: 
@@ -53,35 +54,69 @@ Resources:
           FromPort: 0
           ToPort: 65535
           CidrIp: 0.0.0.0/0
-  
+ 
+  S3ReadRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: ec2.amazonaws.com
+          Action: sts:AssumeRole
+      RoleName: S3ReadRole
+      Path: "/"
+
+  RolePolicies:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: S3Allow
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Action:
+          - s3:Get*
+          - s3:List*
+          Resource: "*"
+      Roles:
+      -
+        Ref: S3ReadRole
+
+
   ProfileWithRolesForOurApp:
     Type: AWS::IAM::InstanceProfile
-    Properties: 
+    DependsOn: S3ReadRole
+    Properties:
+      Path: "/"
       Roles:
-        #!/bin/bash
-        apt-get update -y
-        apt-get install unzip awscli -y
-        apt-get install apache2 -y
-        systemctl start apache2.service
-        cd /var/www/html
-        aws s3 cp s3://udacity-Project2-arafat/index.html
+        - S3ReadRol
 
-  
   WebAppLaunchConfig:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      ImageId: ami-06d51e91cea0dac8d  
-      KeyName: ec2-access
+      IamInstanceProfile: !Ref ProfileWithRolesForOurApp
+      UserData:
+          Fn::Base64:
+            Fn::Join:
+             - ''
+             - - "#!/bin/bash \n"
+               - "apt-get update -y \n"
+               - "apt-get install unzip awscli -y \n"
+               - "apt-get install apache2 -y \n"
+               - "systemctl start apache2.service \n"
+               - "cd /var/www/html \n "
+               - "aws s3 cp s3://udacity-project2-arafat  . \n"
+      ImageId: ami-06d51e91cea0dac8d
       SecurityGroups:
-      - Ref: WebSecurityGrp
+      - Ref: WebSecurityGrp 
+
       InstanceType: t3.medium
       BlockDeviceMappings:
-      - DeviceName: "/dev/sdk"
+      - DeviceName: "/dev/sdk" 
         Ebs:
-          VolumeSize: '10'   
-      IamInstanceProfile: 
-        Ref: "ProfileWithRolesForOurApp"
-  
+          VolumeSize: '10' 
+      
+     
   WebAppGroup: 
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties: 
@@ -99,20 +134,18 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Subnets:
-        - Fn::ImportValue: !Sub "${EnvironmentName}-PUB1-SN"
-        - Fn::ImportValue: !Sub "${EnvironmentName}-PUB2-SN"
+      - Fn::ImportValue: !Sub "${EnvironmentName}-PUB1-SN"
+      - Fn::ImportValue: !Sub "${EnvironmentName}-PUB2-SN"
       SecurityGroups:
-        - Ref: LBSecurityGrp
+      - Ref: LBSecurityGrp
       
   Listener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       DefaultActions:
-        - Type: "forward"
-          TargetGroupARNs:
-            Ref: WebAppTargetGroup
-      LoadBalancerArn:
-        Ref: WebAppLB
+      - Type: forward
+        TargetGroupARNs: !Ref WebAppTargetGroup
+      LoadBalancerArn: !Ref WebAppLB
       Port: 80
       Protocol: "HTTP"
    
@@ -120,8 +153,8 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
     Properties: 
       Actions:
-        - Type: forward
-          TargetGroupARNs: !Ref 'WebAppTargetGroup'
+      - Type: forward
+        TargetGroupARNs: !Ref 'WebAppTargetGroup'
       Conditions:
         - Field: path-pattern
       Values: [/]
@@ -142,3 +175,4 @@ Resources:
       VpcId: 
         Fn::ImportValue:
           Fn::Sub: "${EnvironmentName}-VPCID"
+      TargetType: instance 
